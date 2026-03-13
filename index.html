@@ -79,7 +79,19 @@
 <body>
   <div class="container">
     <h1>Resell Dashboard</h1>
+    
     <p class="small">Deine erste echte Reselling-App</p>
+    <div class="card" id="authBox">
+  <h2>Login / Signup</h2>
+  <input id="email" type="email" placeholder="Email" />
+  <input id="password" type="password" placeholder="Passwort" />
+  <button onclick="signUp()">Signup</button>
+  <button onclick="signIn()">Login</button>
+  <button onclick="signOut()" class="danger">Logout</button>
+  <p id="authStatus" class="small"></p>
+</div>
+
+<div id="toolArea">
 
     <div class="card">
       <h2>Item hinzufügen</h2>
@@ -187,6 +199,86 @@
       return;
     }
 
+async function signUp() {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value.trim();
+
+  if (!email || !password) {
+    alert("Bitte Email und Passwort eingeben.");
+    return;
+  }
+
+  const { error } = await supabaseClient.auth.signUp({
+    email,
+    password
+  });
+
+  if (error) {
+    alert("Signup Fehler: " + error.message);
+    return;
+  }
+
+  document.getElementById("authStatus").textContent =
+    "Signup erfolgreich. Falls Email-Bestätigung aktiv ist, bestätige zuerst deine Mail.";
+}
+
+async function signIn() {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value.trim();
+
+  if (!email || !password) {
+    alert("Bitte Email und Passwort eingeben.");
+    return;
+  }
+
+  const { error } = await supabaseClient.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if (error) {
+    alert("Login Fehler: " + error.message);
+    return;
+  }
+
+  document.getElementById("authStatus").textContent = "Login erfolgreich.";
+  await checkUser();
+  await loadItems();
+}
+
+async function signOut() {
+  const { error } = await supabaseClient.auth.signOut();
+
+  if (error) {
+    alert("Logout Fehler: " + error.message);
+    return;
+  }
+
+  document.getElementById("authStatus").textContent = "Ausgeloggt.";
+  await checkUser();
+}
+
+async function checkUser() {
+  const { data, error } = await supabaseClient.auth.getUser();
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  const user = data.user;
+  const toolArea = document.getElementById("toolArea");
+  const authStatus = document.getElementById("authStatus");
+
+  if (user) {
+    toolArea.style.display = "block";
+    authStatus.textContent = "Eingeloggt als: " + user.email;
+  } else {
+    toolArea.style.display = "none";
+    authStatus.textContent = "Nicht eingeloggt.";
+  }
+}
+    
     let totalProfit = 0;
 
     itemsDiv.innerHTML = items.map((item) => {

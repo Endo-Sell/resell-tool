@@ -147,11 +147,11 @@
         }
       ]);
 
-    if (error) {
-      console.error("Fehler beim Speichern:", error);
-      alert("Fehler beim Speichern in Supabase.");
-      return;
-    }
+if (error) {
+  console.error("Fehler beim Speichern:", error);
+  alert("Fehler beim Speichern: " + error.message);
+  return;
+}
 
     document.getElementById("title").value = "";
     document.getElementById("brand").value = "";
@@ -168,10 +168,11 @@
       .delete()
       .eq("id", id);
 
-    if (error) {
-      console.error("Fehler beim Löschen:", error);
-      return;
-    }
+if (error) {
+  console.error("Fehler beim Löschen:", error);
+  alert("Fehler beim Löschen: " + error.message);
+  return;
+}
 
     await loadItems();
   }

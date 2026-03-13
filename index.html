@@ -112,8 +112,9 @@
       .order("id", { ascending: false });
 
     if (error) {
-      console.error("Fehler beim Laden:", error);
-      return;
+  console.error("Fehler beim Speichern:", error);
+  alert("Fehler beim Speichern: " + error.message);
+  return;
     }
 
     items = data || [];

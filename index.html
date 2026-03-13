@@ -112,9 +112,9 @@
       .order("id", { ascending: false });
 
     if (error) {
-  console.error("Fehler beim Speichern:", error);
-  alert("Fehler beim Speichern: " + error.message);
-  return;
+      console.error("Fehler beim Laden:", error);
+      alert("Fehler beim Laden: " + error.message);
+      return;
     }
 
     items = data || [];
@@ -139,19 +139,19 @@
         {
           title: title,
           brand: brand,
-          buy_price: buyPrice ? Number(buyPrice) : null,
-          list_price: listPrice ? Number(listPrice) : null,
-          sold_price: null,
+          buy_price: buyPrice ? Number(buyPrice) : 0,
+          list_price: listPrice ? Number(listPrice) : 0,
+          sold_price: 0,
           size: size,
           notes: ""
         }
       ]);
 
-if (error) {
-  console.error("Fehler beim Speichern:", error);
-  alert("Fehler beim Speichern: " + error.message);
-  return;
-}
+    if (error) {
+      console.error("Fehler beim Speichern:", error);
+      alert("Fehler beim Speichern: " + error.message);
+      return;
+    }
 
     document.getElementById("title").value = "";
     document.getElementById("brand").value = "";
@@ -168,11 +168,11 @@ if (error) {
       .delete()
       .eq("id", id);
 
-if (error) {
-  console.error("Fehler beim Löschen:", error);
-  alert("Fehler beim Löschen: " + error.message);
-  return;
-}
+    if (error) {
+      console.error("Fehler beim Löschen:", error);
+      alert("Fehler beim Löschen: " + error.message);
+      return;
+    }
 
     await loadItems();
   }
@@ -213,71 +213,6 @@ if (error) {
   }
 
   loadItems();
-    function renderItems() {
-      const itemsDiv = document.getElementById("items");
-      const stats = document.getElementById("stats");
-
-      if (items.length === 0) {
-        itemsDiv.innerHTML = "<p class='small'>Noch keine Items vorhanden.</p>";
-        stats.textContent = "Noch keine Items gespeichert.";
-        return;
-      }
-
-      let totalProfit = 0;
-
-      itemsDiv.innerHTML = items.map((item, index) => {
-        const buy = Number(item.buyPrice || 0);
-        const list = Number(item.listPrice || 0);
-        const profit = list - buy;
-        totalProfit += profit;
-
-        return `
-          <div class="item">
-            <strong>${item.title}</strong><br>
-            <span class="small">${item.brand} · Größe ${item.size || "-"}</span><br>
-            Einkauf: ${buy}€ · Listenpreis: ${list}€ ·
-            <span class="profit">Gewinn: ${profit}€</span><br><br>
-            <button class="danger" onclick="deleteItem(${index})">Löschen</button>
-          </div>
-        `;
-      }).join("");
-
-      stats.innerHTML = `
-        Items: <strong>${items.length}</strong><br>
-        Möglicher Gesamtgewinn: <span class="profit">${totalProfit}€</span>
-      `;
-    }
-
-    function addItem() {
-      const title = document.getElementById("title").value.trim();
-      const brand = document.getElementById("brand").value.trim();
-      const buyPrice = document.getElementById("buyPrice").value.trim();
-      const listPrice = document.getElementById("listPrice").value.trim();
-      const size = document.getElementById("size").value.trim();
-
-      if (!title) {
-        alert("Bitte Titel eingeben.");
-        return;
-      }
-
-      items.unshift({ title, brand, buyPrice, listPrice, size });
-      saveItems();
-      renderItems();
-
-      document.getElementById("title").value = "";
-      document.getElementById("brand").value = "";
-      document.getElementById("buyPrice").value = "";
-      document.getElementById("listPrice").value = "";
-      document.getElementById("size").value = "";
-    }
-
-    function deleteItem(index) {
-      items.splice(index, 1);
-      saveItems();
-      renderItems();
-    }
-
-    renderItems();
-  </script>
+</script>
 </body>
 </html>

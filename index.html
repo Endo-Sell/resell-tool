@@ -1,14 +1,169 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Resell Tool</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #fff;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .card {
+      background: #1b1b1b;
+      border: 1px solid #2b2b2b;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    h1, h2 {
+      margin-top: 0;
+    }
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 8px;
+      margin-bottom: 12px;
+      border-radius: 10px;
+      border: none;
+      box-sizing: border-box;
+    }
+    input {
+      background: #2a2a2a;
+      color: white;
+    }
+    button {
+      background: #22c55e;
+      color: black;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+    .item {
+      padding: 12px;
+      border-bottom: 1px solid #333;
+    }
+    .small {
+      color: #aaa;
+      font-size: 14px;
+    }
+    .profit {
+      color: #22c55e;
+      font-weight: bold;
+    }
+    .danger {
+      background: #ef4444;
+      color: white;
+    }
+  </style>
 </head>
-<body style="font-family: Arial; text-align:center; margin-top:80px;">
-  <h1>Resell Dashboard</h1>
-  <p>Dein Reselling Tool läuft.</p>
+<body>
+  <div class="container">
+    <h1>Resell Dashboard</h1>
+    <p class="small">Deine erste echte Reselling-App</p>
 
-  <button onclick="alert('Item hinzufügen kommt bald!')">
-    Item hinzufügen
-  </button>
+    <div class="card">
+      <h2>Item hinzufügen</h2>
+      <input id="title" placeholder="Titel z. B. Ralph Lauren Zipper" />
+      <input id="brand" placeholder="Brand" />
+      <input id="buyPrice" placeholder="Einkaufspreis z. B. 20" type="number" />
+      <input id="listPrice" placeholder="Listenpreis z. B. 45" type="number" />
+      <input id="size" placeholder="Größe z. B. L" />
+      <button onclick="addItem()">Item speichern</button>
+    </div>
+
+    <div class="card">
+      <h2>Übersicht</h2>
+      <p id="stats">Noch keine Items gespeichert.</p>
+    </div>
+
+    <div class="card">
+      <h2>Deine Items</h2>
+      <div id="items"></div>
+    </div>
+  </div>
+
+  <script>
+    let items = JSON.parse(localStorage.getItem("resell_items")) || [];
+
+    function saveItems() {
+      localStorage.setItem("resell_items", JSON.stringify(items));
+    }
+
+    function renderItems() {
+      const itemsDiv = document.getElementById("items");
+      const stats = document.getElementById("stats");
+
+      if (items.length === 0) {
+        itemsDiv.innerHTML = "<p class='small'>Noch keine Items vorhanden.</p>";
+        stats.textContent = "Noch keine Items gespeichert.";
+        return;
+      }
+
+      let totalProfit = 0;
+
+      itemsDiv.innerHTML = items.map((item, index) => {
+        const buy = Number(item.buyPrice || 0);
+        const list = Number(item.listPrice || 0);
+        const profit = list - buy;
+        totalProfit += profit;
+
+        return `
+          <div class="item">
+            <strong>${item.title}</strong><br>
+            <span class="small">${item.brand} · Größe ${item.size || "-"}</span><br>
+            Einkauf: ${buy}€ · Listenpreis: ${list}€ ·
+            <span class="profit">Gewinn: ${profit}€</span><br><br>
+            <button class="danger" onclick="deleteItem(${index})">Löschen</button>
+          </div>
+        `;
+      }).join("");
+
+      stats.innerHTML = `
+        Items: <strong>${items.length}</strong><br>
+        Möglicher Gesamtgewinn: <span class="profit">${totalProfit}€</span>
+      `;
+    }
+
+    function addItem() {
+      const title = document.getElementById("title").value.trim();
+      const brand = document.getElementById("brand").value.trim();
+      const buyPrice = document.getElementById("buyPrice").value.trim();
+      const listPrice = document.getElementById("listPrice").value.trim();
+      const size = document.getElementById("size").value.trim();
+
+      if (!title) {
+        alert("Bitte Titel eingeben.");
+        return;
+      }
+
+      items.unshift({ title, brand, buyPrice, listPrice, size });
+      saveItems();
+      renderItems();
+
+      document.getElementById("title").value = "";
+      document.getElementById("brand").value = "";
+      document.getElementById("buyPrice").value = "";
+      document.getElementById("listPrice").value = "";
+      document.getElementById("size").value = "";
+    }
+
+    function deleteItem(index) {
+      items.splice(index, 1);
+      saveItems();
+      renderItems();
+    }
+
+    renderItems();
+  </script>
 </body>
 </html>

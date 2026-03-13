@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="de">
-<head> 
+<head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Resell Tool</title>
@@ -11,9 +11,7 @@
     const supabaseKey = "sb_publishable_Y6TMbHHyLcg-IwIbxN55uA_pbCx_J90";
     const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
   </script>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Resell Tool</title>
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -36,7 +34,7 @@
     h1, h2 {
       margin-top: 0;
     }
-    input, button {
+    input, button, select {
       width: 100%;
       padding: 12px;
       margin-top: 8px;
@@ -45,7 +43,7 @@
       border: none;
       box-sizing: border-box;
     }
-    input {
+    input, select {
       background: #2a2a2a;
       color: white;
     }
@@ -74,237 +72,316 @@
       background: #ef4444;
       color: white;
     }
+    .secondary {
+      background: #3b82f6;
+      color: white;
+    }
+    .muted {
+      background: #444;
+      color: white;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 700px) {
+      .row {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Resell Dashboard</h1>
-    
-    <p class="small">Deine erste echte Reselling-App</p>
+    <p class="small">Deine echte Reselling-App</p>
+
     <div class="card" id="authBox">
-  <h2>Login / Signup</h2>
-  <input id="email" type="email" placeholder="Email" />
-  <input id="password" type="password" placeholder="Passwort" />
-  <button onclick="signUp()">Signup</button>
-  <button onclick="signIn()">Login</button>
-  <button onclick="signOut()" class="danger">Logout</button>
-  <p id="authStatus" class="small"></p>
-</div>
-
-<div id="toolArea">
-
-    <div class="card">
-      <h2>Item hinzufügen</h2>
-      <input id="title" placeholder="Titel z. B. Ralph Lauren Zipper" />
-      <input id="brand" placeholder="Brand" />
-      <input id="buyPrice" placeholder="Einkaufspreis z. B. 20" type="number" />
-      <input id="listPrice" placeholder="Listenpreis z. B. 45" type="number" />
-      <input id="size" placeholder="Größe z. B. L" />
-      <button onclick="addItem()">Item speichern</button>
+      <h2>Login / Signup</h2>
+      <input id="email" type="email" placeholder="Email" />
+      <input id="password" type="password" placeholder="Passwort" />
+      <button onclick="signUp()">Signup</button>
+      <button class="secondary" onclick="signIn()">Login</button>
+      <button class="danger" onclick="signOut()">Logout</button>
+      <p id="authStatus" class="small"></p>
     </div>
 
-    <div class="card">
-      <h2>Übersicht</h2>
-      <p id="stats">Noch keine Items gespeichert.</p>
-    </div>
+    <div id="toolArea" style="display:none;">
+      <div class="card">
+        <h2>Item hinzufügen</h2>
 
-    <div class="card">
-      <h2>Deine Items</h2>
-      <div id="items"></div>
+        <input id="title" placeholder="Titel z. B. Ralph Lauren Zipper" />
+        <input id="brand" placeholder="Brand" />
+
+        <div class="row">
+          <input id="buyPrice" placeholder="Einkaufspreis z. B. 20" type="number" />
+          <input id="listPrice" placeholder="Listenpreis z. B. 45" type="number" />
+        </div>
+
+        <div class="row">
+          <input id="soldPrice" placeholder="Verkaufspreis z. B. 40" type="number" />
+          <input id="size" placeholder="Größe z. B. L" />
+        </div>
+
+        <input id="itemLink" placeholder="Vinted Link (optional)" />
+        <input id="category" placeholder="Kategorie z. B. Zipper / Hemd / Jacke" />
+
+        <select id="status">
+          <option value="gekauft">gekauft</option>
+          <option value="gelistet">gelistet</option>
+          <option value="verkauft">verkauft</option>
+        </select>
+
+        <input id="notes" placeholder="Notizen (optional)" />
+
+        <button onclick="addItem()">Item speichern</button>
+      </div>
+
+      <div class="card">
+        <h2>Übersicht</h2>
+        <p id="stats">Noch keine Items gespeichert.</p>
+      </div>
+
+      <div class="card">
+        <h2>Deine Items</h2>
+        <div id="items"></div>
+      </div>
     </div>
   </div>
 
   <script>
-  let items = [];
+    let items = [];
+    let currentUser = null;
 
-  async function loadItems() {
-    const { data, error } = await supabaseClient
-      .from("items")
-      .select("*")
-      .order("id", { ascending: false });
+    async function checkUser() {
+      const { data, error } = await supabaseClient.auth.getUser();
 
-    if (error) {
-      console.error("Fehler beim Laden:", error);
-      alert("Fehler beim Laden: " + error.message);
-      return;
+      if (error) {
+        console.error("Fehler beim User-Check:", error);
+        return;
+      }
+
+      currentUser = data.user;
+      const toolArea = document.getElementById("toolArea");
+      const authStatus = document.getElementById("authStatus");
+
+      if (currentUser) {
+        toolArea.style.display = "block";
+        authStatus.textContent = "Eingeloggt als: " + currentUser.email;
+        await loadItems();
+      } else {
+        toolArea.style.display = "none";
+        authStatus.textContent = "Nicht eingeloggt.";
+        document.getElementById("items").innerHTML = "";
+        document.getElementById("stats").textContent = "Bitte einloggen.";
+      }
     }
 
-    items = data || [];
-    renderItems();
-  }
+    async function signUp() {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
 
-  async function addItem() {
-    const title = document.getElementById("title").value.trim();
-    const brand = document.getElementById("brand").value.trim();
-    const buyPrice = document.getElementById("buyPrice").value.trim();
-    const listPrice = document.getElementById("listPrice").value.trim();
-    const size = document.getElementById("size").value.trim();
+      if (!email || !password) {
+        alert("Bitte Email und Passwort eingeben.");
+        return;
+      }
 
-    if (!title) {
-      alert("Bitte Titel eingeben.");
-      return;
+      const { error } = await supabaseClient.auth.signUp({
+        email,
+        password
+      });
+
+      if (error) {
+        alert("Signup Fehler: " + error.message);
+        return;
+      }
+
+      document.getElementById("authStatus").textContent =
+        "Signup erfolgreich. Falls Email-Bestätigung aktiv ist, bestätige zuerst deine Mail.";
     }
 
-    const { error } = await supabaseClient
-      .from("items")
-      .insert([
-        {
-          title: title,
-          brand: brand,
-          buy_price: buyPrice ? Number(buyPrice) : 0,
-          list_price: listPrice ? Number(listPrice) : 0,
-          sold_price: 0,
-          size: size,
-          notes: ""
+    async function signIn() {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
+
+      if (!email || !password) {
+        alert("Bitte Email und Passwort eingeben.");
+        return;
+      }
+
+      const { error } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        alert("Login Fehler: " + error.message);
+        return;
+      }
+
+      await checkUser();
+    }
+
+    async function signOut() {
+      const { error } = await supabaseClient.auth.signOut();
+
+      if (error) {
+        alert("Logout Fehler: " + error.message);
+        return;
+      }
+
+      await checkUser();
+    }
+
+    async function loadItems() {
+      if (!currentUser) return;
+
+      const { data, error } = await supabaseClient
+        .from("items")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .order("id", { ascending: false });
+
+      if (error) {
+        console.error("Fehler beim Laden:", error);
+        alert("Fehler beim Laden: " + error.message);
+        return;
+      }
+
+      items = data || [];
+      renderItems();
+    }
+
+    async function addItem() {
+      if (!currentUser) {
+        alert("Bitte zuerst einloggen.");
+        return;
+      }
+
+      const title = document.getElementById("title").value.trim();
+      const brand = document.getElementById("brand").value.trim();
+      const buyPrice = document.getElementById("buyPrice").value.trim();
+      const listPrice = document.getElementById("listPrice").value.trim();
+      const soldPrice = document.getElementById("soldPrice").value.trim();
+      const size = document.getElementById("size").value.trim();
+      const itemLink = document.getElementById("itemLink").value.trim();
+      const category = document.getElementById("category").value.trim();
+      const status = document.getElementById("status").value;
+      const notes = document.getElementById("notes").value.trim();
+
+      if (!title) {
+        alert("Bitte Titel eingeben.");
+        return;
+      }
+
+      const { error } = await supabaseClient
+        .from("items")
+        .insert([
+          {
+            user_id: currentUser.id,
+            title: title,
+            brand: brand,
+            buy_price: buyPrice ? Number(buyPrice) : 0,
+            list_price: listPrice ? Number(listPrice) : 0,
+            sold_price: soldPrice ? Number(soldPrice) : 0,
+            size: size,
+            notes: notes,
+            status: status,
+            link: itemLink,
+            category: category
+          }
+        ]);
+
+      if (error) {
+        console.error("Fehler beim Speichern:", error);
+        alert("Fehler beim Speichern: " + error.message);
+        return;
+      }
+
+      document.getElementById("title").value = "";
+      document.getElementById("brand").value = "";
+      document.getElementById("buyPrice").value = "";
+      document.getElementById("listPrice").value = "";
+      document.getElementById("soldPrice").value = "";
+      document.getElementById("size").value = "";
+      document.getElementById("itemLink").value = "";
+      document.getElementById("category").value = "";
+      document.getElementById("status").value = "gekauft";
+      document.getElementById("notes").value = "";
+
+      await loadItems();
+    }
+
+    async function deleteItem(id) {
+      const { error } = await supabaseClient
+        .from("items")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        console.error("Fehler beim Löschen:", error);
+        alert("Fehler beim Löschen: " + error.message);
+        return;
+      }
+
+      await loadItems();
+    }
+
+    function renderItems() {
+      const itemsDiv = document.getElementById("items");
+      const stats = document.getElementById("stats");
+
+      if (!items.length) {
+        itemsDiv.innerHTML = "<p class='small'>Noch keine Items vorhanden.</p>";
+        stats.textContent = "Noch keine Items gespeichert.";
+        return;
+      }
+
+      let totalPossibleProfit = 0;
+      let totalRealProfit = 0;
+      let soldCount = 0;
+
+      itemsDiv.innerHTML = items.map((item) => {
+        const buy = Number(item.buy_price || 0);
+        const list = Number(item.list_price || 0);
+        const sold = Number(item.sold_price || 0);
+
+        const possibleProfit = list - buy;
+        const realProfit = sold > 0 ? sold - buy : 0;
+
+        totalPossibleProfit += possibleProfit;
+        totalRealProfit += realProfit;
+
+        if ((item.status || "").toLowerCase() === "verkauft") {
+          soldCount++;
         }
-      ]);
 
-    if (error) {
-      console.error("Fehler beim Speichern:", error);
-      alert("Fehler beim Speichern: " + error.message);
-      return;
-    }
+        return `
+          <div class="item">
+            <strong>${item.title || ""}</strong><br>
+            <span class="small">${item.brand || ""} · ${item.category || "-"} · Größe ${item.size || "-"}</span><br>
+            Status: ${item.status || "-"}<br>
+            Einkauf: ${buy}€ · Listenpreis: ${list}€ · Verkauf: ${sold}€<br>
+            <span class="profit">Möglicher Gewinn: ${possibleProfit}€</span>
+            ${sold > 0 ? `<br><span class="profit">Realer Gewinn: ${realProfit}€</span>` : ""}
+            ${item.link ? `<br><a href="${item.link}" target="_blank" style="color:#60a5fa;">Listing öffnen</a>` : ""}
+            ${item.notes ? `<br><span class="small">${item.notes}</span>` : ""}
+            <br><br>
+            <button class="danger" onclick="deleteItem('${item.id}')">Löschen</button>
+          </div>
+        `;
+      }).join("");
 
-    document.getElementById("title").value = "";
-    document.getElementById("brand").value = "";
-    document.getElementById("buyPrice").value = "";
-    document.getElementById("listPrice").value = "";
-    document.getElementById("size").value = "";
-
-    await loadItems();
-  }
-
-  async function deleteItem(id) {
-    const { error } = await supabaseClient
-      .from("items")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-      console.error("Fehler beim Löschen:", error);
-      alert("Fehler beim Löschen: " + error.message);
-      return;
-    }
-
-    await loadItems();
-  }
-
-  function renderItems() {
-    const itemsDiv = document.getElementById("items");
-    const stats = document.getElementById("stats");
-
-    if (!items.length) {
-      itemsDiv.innerHTML = "<p class='small'>Noch keine Items vorhanden.</p>";
-      stats.textContent = "Noch keine Items gespeichert.";
-      return;
-    }
-
-async function signUp() {
-  const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("password").value.trim();
-
-  if (!email || !password) {
-    alert("Bitte Email und Passwort eingeben.");
-    return;
-  }
-
-  const { error } = await supabaseClient.auth.signUp({
-    email,
-    password
-  });
-
-  if (error) {
-    alert("Signup Fehler: " + error.message);
-    return;
-  }
-
-  document.getElementById("authStatus").textContent =
-    "Signup erfolgreich. Falls Email-Bestätigung aktiv ist, bestätige zuerst deine Mail.";
-}
-
-async function signIn() {
-  const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("password").value.trim();
-
-  if (!email || !password) {
-    alert("Bitte Email und Passwort eingeben.");
-    return;
-  }
-
-  const { error } = await supabaseClient.auth.signInWithPassword({
-    email,
-    password
-  });
-
-  if (error) {
-    alert("Login Fehler: " + error.message);
-    return;
-  }
-
-  document.getElementById("authStatus").textContent = "Login erfolgreich.";
-  await checkUser();
-  await loadItems();
-}
-
-async function signOut() {
-  const { error } = await supabaseClient.auth.signOut();
-
-  if (error) {
-    alert("Logout Fehler: " + error.message);
-    return;
-  }
-
-  document.getElementById("authStatus").textContent = "Ausgeloggt.";
-  await checkUser();
-}
-
-async function checkUser() {
-  const { data, error } = await supabaseClient.auth.getUser();
-
-  if (error) {
-    console.error(error);
-    return;
-  }
-
-  const user = data.user;
-  const toolArea = document.getElementById("toolArea");
-  const authStatus = document.getElementById("authStatus");
-
-  if (user) {
-    toolArea.style.display = "block";
-    authStatus.textContent = "Eingeloggt als: " + user.email;
-  } else {
-    toolArea.style.display = "none";
-    authStatus.textContent = "Nicht eingeloggt.";
-  }
-}
-    
-    let totalProfit = 0;
-
-    itemsDiv.innerHTML = items.map((item) => {
-      const buy = Number(item.buy_price || 0);
-      const list = Number(item.list_price || 0);
-      const profit = list - buy;
-      totalProfit += profit;
-
-      return `
-        <div class="item">
-          <strong>${item.title || ""}</strong><br>
-          <span class="small">${item.brand || ""} · Größe ${item.size || "-"}</span><br>
-          Einkauf: ${buy}€ · Listenpreis: ${list}€ ·
-          <span class="profit">Gewinn: ${profit}€</span><br><br>
-          <button class="danger" onclick="deleteItem('${item.id}')">Löschen</button>
-        </div>
+      stats.innerHTML = `
+        Items: <strong>${items.length}</strong><br>
+        Verkaufte Items: <strong>${soldCount}</strong><br>
+        Möglicher Gesamtgewinn: <span class="profit">${totalPossibleProfit}€</span><br>
+        Realer Gesamtgewinn: <span class="profit">${totalRealProfit}€</span>
       `;
-    }).join("");
+    }
 
-    stats.innerHTML = `
-      Items: <strong>${items.length}</strong><br>
-      Möglicher Gesamtgewinn: <span class="profit">${totalProfit}€</span>
-    `;
-  }
-
-  loadItems();
-</script>
+    checkUser();
+  </script>
 </body>
 </html>

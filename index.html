@@ -332,6 +332,44 @@
   </style>
 </head>
 <body>
+  <div class="card">
+  <div class="section-title">
+    <h2 style="margin:0;">Deal Watchlist</h2>
+    <span class="pill">👀 Beobachte deine Wunsch-Deals</span>
+  </div>
+
+  <form id="watchlistForm" onsubmit="addWatchlist(); return false;">
+    <div class="grid grid-form-2">
+      <div>
+        <label for="watchBrand">Brand</label>
+        <input id="watchBrand" list="brandSuggestions" placeholder="z. B. Nike" />
+      </div>
+      <div>
+        <label for="watchCategory">Kategorie</label>
+        <input id="watchCategory" list="categorySuggestions" placeholder="z. B. Schuhe" />
+      </div>
+    </div>
+    <div class="grid grid-form-2">
+      <div>
+        <label for="watchSize">Größe</label>
+        <input id="watchSize" placeholder="z. B. 42" />
+      </div>
+      <div>
+        <label for="watchMaxPrice">Maximaler Preis</label>
+        <input id="watchMaxPrice" type="number" placeholder="z. B. 120" />
+      </div>
+    </div>
+    <label for="watchIsActive">Status</label>
+    <select id="watchIsActive">
+      <option value="true">aktiv</option>
+      <option value="false">inaktiv</option>
+    </select>
+    <div class="auth-actions" style="margin-top:12px;">
+      <button class="btn-primary" type="submit">Watchlist speichern</button>
+    </div>
+  </form>
+  <div id="watchlists" class="items-grid" style="margin-top:16px;"></div>
+</div>
   <div class="container">
     <div class="topbar">
       <div class="brand">
@@ -792,6 +830,117 @@
     }
 
     checkUser();
+    let watchlists = [];
+
+async function loadWatchlists() {
+  if (!currentUser) return;
+  const { data, error } = await supabaseClient
+    .from("watchlist")
+    .select("*")
+    .eq("user_id", currentUser.id)
+    .order("id", { ascending: false });
+  if (error) {
+    console.error("Fehler beim Laden Watchlist:", error);
+    return;
+  }
+  watchlists = data || [];
+  renderWatchlists();
+}
+
+async function addWatchlist() {
+  if (!currentUser) {
+    alert("Bitte zuerst einloggen.");
+    return;
+  }
+  const brand = document.getElementById("watchBrand").value.trim();
+  const category = document.getElementById("watchCategory").value.trim();
+  const size = document.getElementById("watchSize").value.trim();
+  const max_price = document.getElementById("watchMaxPrice").value.trim();
+  const is_active = document.getElementById("watchIsActive").value === "true";
+
+  if (!brand || !category || !max_price) {
+    alert("Bitte Brand, Kategorie und Max Preis eingeben.");
+    return;
+  }
+  const { error } = await supabaseClient.from("watchlist").insert([
+    {
+      user_id: currentUser.id,
+      brand,
+      category,
+      size,
+      max_price: max_price ? Number(max_price) : 0,
+      is_active
+    }
+  ]);
+  if (error) {
+    console.error("Fehler beim Speichern Watchlist:", error);
+    alert("Fehler beim Speichern: " + error.message);
+    return;
+  }
+  document.getElementById("watchBrand").value = "";
+  document.getElementById("watchCategory").value = "";
+  document.getElementById("watchSize").value = "";
+  document.getElementById("watchMaxPrice").value = "";
+  document.getElementById("watchIsActive").value = "true";
+  await loadWatchlists();
+}
+
+async function deleteWatchlist(id) {
+  const { error } = await supabaseClient
+    .from("watchlist")
+    .delete()
+    .eq("id", id);
+  if (error) {
+    console.error("Fehler beim Löschen Watchlist:", error);
+    alert("Fehler beim Löschen: " + error.message);
+    return;
+  }
+  await loadWatchlists();
+}
+
+function renderWatchlists() {
+  const div = document.getElementById("watchlists");
+  if (!watchlists.length) {
+    div.innerHTML = "<div class='empty'>Noch keine Watchlists angelegt.</div>";
+    return;
+  }
+  div.innerHTML = watchlists
+    .map((w) => {
+      const status = w.is_active ? "aktiv" : "inaktiv";
+      return `
+        <div class="item-card">
+          <div class="item-top">
+            <div>
+              <h3 class="item-title">${w.brand || "Ohne Brand"}</h3>
+              <div class="small">👕 ${w.category || "-"} · 📏 ${w.size || "-"} · 💰 Max: ${euro(w.max_price)}</div>
+            </div>
+            <span class="status-badge status-${status === "aktiv" ? "gelistet" : "gekauft"}">${status}</span>
+          </div>
+          <div class="row-actions" style="margin-top:14px;">
+            <button class="btn-danger" onclick="deleteWatchlist('${w.id}')">🗑️ Löschen</button>
+          </div>
+        </div>`;
+    })
+    .join("");
+}
+
+// Ergänzung in checkUser()
+async function checkUser() {
+  // ...dein bestehender Code...
+  if (currentUser) {
+    toolArea.style.display = "block";
+    authBox.style.display = "none";
+    userBar.style.display = "flex";
+    userEmail.textContent = currentUser.email;
+    authStatus.textContent = "";
+    await loadItems();
+    await loadWatchlists(); // <---- Ergänze diesen Aufruf
+  } else {
+    // ...
+    document.getElementById("watchlists").innerHTML = "";
+  }
+}
   </script>
+  
 </body>
 </html>

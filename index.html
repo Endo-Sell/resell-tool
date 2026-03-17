@@ -302,6 +302,34 @@
       margin-bottom: 10px;
     }
 
+    .watchlist-grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .watchlist-card {
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.02);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .watchlist-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+
+    .watchlist-title {
+      margin: 0 0 6px;
+      font-size: 1.15rem;
+    }
+
+    .status-active { background: rgba(34,197,94,.18); color: #74e7a0; }
+    .status-inactive { background: rgba(156,163,175,.18); color: #c8cdd7; }
+
     .section-title {
       display: flex;
       justify-content: space-between;
@@ -504,11 +532,81 @@
         </div>
         <div id="items" class="items-grid"></div>
       </div>
+
+      <div class="grid grid-2">
+        <div class="card">
+          <h2>Deal Watchlist</h2>
+
+          <div class="grid grid-form-2">
+            <div>
+              <label for="wlBrand">Brand</label>
+              <input id="wlBrand" list="wlBrandSuggestions" placeholder="z. B. Ralph Lauren" />
+              <datalist id="wlBrandSuggestions">
+                <option value="Ralph Lauren"></option>
+                <option value="Polo Ralph Lauren"></option>
+                <option value="Nike"></option>
+                <option value="Burberry"></option>
+                <option value="Lacoste"></option>
+                <option value="Stone Island"></option>
+                <option value="Moncler"></option>
+                <option value="Gucci"></option>
+                <option value="Adidas"></option>
+                <option value="Zara"></option>
+              </datalist>
+            </div>
+
+            <div>
+              <label for="wlCategory">Kategorie</label>
+              <input id="wlCategory" list="wlCategorySuggestions" placeholder="z. B. Jacke" />
+              <datalist id="wlCategorySuggestions">
+                <option value="Jacke"></option>
+                <option value="T-Shirt"></option>
+                <option value="Hemd"></option>
+                <option value="Pullover"></option>
+                <option value="Zipper"></option>
+                <option value="Hoodie"></option>
+                <option value="Jogginghose"></option>
+                <option value="Jeans"></option>
+                <option value="Weste"></option>
+                <option value="Schuhe"></option>
+              </datalist>
+            </div>
+          </div>
+
+          <div class="grid grid-form-2">
+            <div>
+              <label for="wlSize">Größe</label>
+              <input id="wlSize" placeholder="z. B. L" />
+            </div>
+            <div>
+              <label for="wlMaxPrice">Max. Preis (€)</label>
+              <input id="wlMaxPrice" type="number" placeholder="z. B. 30" />
+            </div>
+          </div>
+
+          <label for="wlIsActive">Status</label>
+          <select id="wlIsActive">
+            <option value="true">Aktiv</option>
+            <option value="false">Inaktiv</option>
+          </select>
+
+          <button class="btn-secondary" style="margin-top:14px;" onclick="addWatchlist()">Watchlist speichern</button>
+        </div>
+
+        <div class="card">
+          <div class="section-title">
+            <h2 style="margin:0;">Meine Watchlists</h2>
+            <span class="pill">🔍 Deal Alerts</span>
+          </div>
+          <div id="watchlists" class="watchlist-grid"></div>
+        </div>
+      </div>
     </div>
   </div>
 
   <script>
     let items = [];
+    let watchlists = [];
     let currentUser = null;
     let currentStatusFilter = "alle";
 
@@ -549,6 +647,7 @@
         userEmail.textContent = currentUser.email;
         authStatus.textContent = "";
         await loadItems();
+        await loadWatchlists();
       } else {
         toolArea.style.display = "none";
         authBox.style.display = "block";
@@ -556,6 +655,7 @@
         authStatus.textContent = "Nicht eingeloggt.";
         document.getElementById("items").innerHTML = "";
         document.getElementById("stats").textContent = "Bitte einloggen.";
+        document.getElementById("watchlists").innerHTML = "";
       }
     }
 
@@ -789,6 +889,116 @@
         Möglicher Gesamtgewinn: <span class="profit">${euro(totalPossibleProfit)}</span><br>
         Realer Gesamtgewinn: <span class="profit">${euro(totalRealProfit)}</span>
       `;
+    }
+
+    async function loadWatchlists() {
+      if (!currentUser) return;
+
+      const { data, error } = await supabaseClient
+        .from("watchlist")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .order("id", { ascending: false });
+
+      if (error) {
+        console.error("Fehler beim Laden der Watchlists:", error);
+        return;
+      }
+
+      watchlists = data || [];
+      renderWatchlists();
+    }
+
+    async function addWatchlist() {
+      if (!currentUser) {
+        alert("Bitte zuerst einloggen.");
+        return;
+      }
+
+      const brand = document.getElementById("wlBrand").value.trim();
+      const category = document.getElementById("wlCategory").value.trim();
+      const size = document.getElementById("wlSize").value.trim();
+      const maxPrice = document.getElementById("wlMaxPrice").value.trim();
+      const isActive = document.getElementById("wlIsActive").value === "true";
+
+      if (!brand && !category) {
+        alert("Bitte mindestens Brand oder Kategorie eingeben.");
+        return;
+      }
+
+      if (maxPrice && isNaN(Number(maxPrice))) {
+        alert("Bitte einen gültigen Preis eingeben.");
+        return;
+      }
+
+      const { error } = await supabaseClient.from("watchlist").insert([
+        {
+          user_id: currentUser.id,
+          brand,
+          category,
+          size,
+          max_price: maxPrice ? Number(maxPrice) : null,
+          is_active: isActive
+        }
+      ]);
+
+      if (error) {
+        console.error("Fehler beim Speichern der Watchlist:", error);
+        alert("Fehler beim Speichern: " + error.message);
+        return;
+      }
+
+      document.getElementById("wlBrand").value = "";
+      document.getElementById("wlCategory").value = "";
+      document.getElementById("wlSize").value = "";
+      document.getElementById("wlMaxPrice").value = "";
+      document.getElementById("wlIsActive").value = "true";
+
+      await loadWatchlists();
+    }
+
+    async function deleteWatchlist(id) {
+      const { error } = await supabaseClient
+        .from("watchlist")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        console.error("Fehler beim Löschen der Watchlist:", error);
+        alert("Fehler beim Löschen: " + error.message);
+        return;
+      }
+
+      await loadWatchlists();
+    }
+
+    function renderWatchlists() {
+      const watchlistsDiv = document.getElementById("watchlists");
+
+      if (!watchlists.length) {
+        watchlistsDiv.innerHTML = "<div class='empty'>Noch keine Watchlists vorhanden.</div>";
+        return;
+      }
+
+      watchlistsDiv.innerHTML = watchlists.map((wl) => {
+        const activeClass = wl.is_active ? "status-active" : "status-inactive";
+        const activeLabel = wl.is_active ? "Aktiv" : "Inaktiv";
+
+        return `
+          <div class="watchlist-card">
+            <div class="watchlist-top">
+              <div>
+                <h3 class="watchlist-title">${wl.brand || "Beliebige Brand"}</h3>
+                <div class="small">👕 ${wl.category || "-"} · 📏 ${wl.size || "-"} · 💶 Max. ${wl.max_price != null ? euro(wl.max_price) : "-"}</div>
+              </div>
+              <span class="status-badge ${activeClass}">${activeLabel}</span>
+            </div>
+            <div class="row-actions" style="margin-top:10px;">
+              <button class="btn-danger" onclick="deleteWatchlist('${wl.id}')">🗑️ Löschen</button>
+            </div>
+          </div>
+        `;
+      }).join("");
     }
 
     checkUser();
